@@ -10,6 +10,7 @@ namespace fs = std::filesystem;
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/type_ptr.hpp>
+#include<math.h>
 
 #include"Texture.h"
 #include"shaderClass.h"
@@ -108,10 +109,15 @@ unsigned int skyboxIndices[] =
 };
 
 
-
+float randf()
+{
+	return -1.0f + (rand() / (RAND_MAX / 2.0f));
+}
 
 int main()
 {
+
+	srand(time(0));
 	// Initialize GLFW
 	glfwInit();
 
@@ -151,42 +157,60 @@ int main()
 	std::string parentDir = (fs::current_path().fs::path::parent_path()).string();
 	std::string texPath = "/Resources/YoutubeOpenGL 7 - Going 3D/";
 
+
+	// Generates Shader object using shaders default.vert and default.frag
+	Shader shaderProgram("default.vert", "default.frag");
+
+	Shader asteroidShader("asteroid.vert", "default.frag");
+
+	// Take care of all the light related things
+	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
+	glm::mat4 lightModel = glm::mat4(1.0f);
+	lightModel = glm::translate(lightModel, lightPos);
+
+	shaderProgram.Activate();
+	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+
+	asteroidShader.Activate();
+	glUniform4f(glGetUniformLocation(asteroidShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(asteroidShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+
+
 	// Texture data
-	Texture textures[]
+	/*Texture textures[]
 	{
 		Texture("planks.png", "diffuse", 0, GL_RGBA, GL_UNSIGNED_BYTE),
 		Texture("planksSpec.png", "specular", 1, GL_RED, GL_UNSIGNED_BYTE)
-	};
+	};*/
 
 
 
 
 
 	// Generates Shader object using shaders default.vert and default.frag
-	Shader shaderProgram("default.vert", "default.frag");
+	/*Shader shaderProgram("default.vert", "default.frag");
 	// Store mesh data in vectors for the mesh
 	std::vector <Vertex> verts(vertices, vertices + sizeof(vertices) / sizeof(Vertex));
 	std::vector <GLuint> ind(indices, indices + sizeof(indices) / sizeof(GLuint));
 	std::vector <Texture> tex(textures, textures + sizeof(textures) / sizeof(Texture));
 	// Create floor mesh
-	Mesh floor(verts, ind, tex);
+	Mesh floor(verts, ind, tex);*/
 
 	//Mesh floor2(verts, ind, tex);
 
 
 	// Shader for light cube
-	Shader lightShader("light.vert", "light.frag");
+	/*Shader lightShader("light.vert", "light.frag");
 	// Store mesh data in vectors for the mesh
 	std::vector <Vertex> lightVerts(lightVertices, lightVertices + sizeof(lightVertices) / sizeof(Vertex));
 	std::vector <GLuint> lightInd(lightIndices, lightIndices + sizeof(lightIndices) / sizeof(GLuint));
 	// Create light mesh
-	Mesh light(lightVerts, lightInd, tex);
+	Mesh light(lightVerts, lightInd, tex);*/
 
 
-
-
-
-	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	/*glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
 	lightModel = glm::translate(lightModel, lightPos);
@@ -202,7 +226,7 @@ int main()
 	shaderProgram.Activate();
 	glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, glm::value_ptr(objectModel));
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);*/
 
 	/*
 	Texture planksTex("planks.png", GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -253,16 +277,31 @@ int main()
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	// This might help with seams on some systems
-	//glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 	// Cycles through all the textures and attaches them to the cubemap object
 	for (unsigned int i = 0; i < 6; i++)
-	{
+	{	
+		
+		//Needed because the right picture is always loaded upside down this is bullshit
+		//Whyyyyyyyyyyyyyyy ??????????
+		//Broke after adding gltf Model loading again why and how ?
+		if (facesCubemap[i] == "right.jpg") {
+
+			//std::cout << "right" << std::endl;
+			stbi_set_flip_vertically_on_load(true);
+		}
+		else 
+		{
+
+			stbi_set_flip_vertically_on_load(false);
+		}
+
 		int width, height, nrChannels;
 		unsigned char* data = stbi_load(facesCubemap[i].c_str(), &width, &height, &nrChannels, 0);
 		if (data)
 		{
-			stbi_set_flip_vertically_on_load(false);
+			
 			glTexImage2D
 			(
 				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
@@ -285,7 +324,9 @@ int main()
 	}
 
 
-	//Model model("scene.gltf");
+	Model model("./sword/scene.gltf");
+
+	Model model2("./sword/scene.gltf");
 
 	// Enables the Depth Buffer
 	glEnable(GL_DEPTH_TEST);
@@ -299,6 +340,65 @@ int main()
 	double crntTime = 0.0f;
 	double timeDiff;
 	unsigned int counter = 0;
+
+
+	float high = 5.0f;
+	float low = 1.0f;
+
+	// The number of asteroids to be created
+	const unsigned int number = 10;
+	// Radius of circle around which asteroids orbit
+	float radius = 10.0f;
+	// How much ateroids deviate from the radius
+	float radiusDeviation = 25.0f;
+
+	// Holds all transformations for the asteroids
+	std::vector <glm::mat4> instanceMatrix;
+
+	for (unsigned int i = 0; i < number; i++)
+	{
+		// Generates x and y for the function x^2 + y^2 = radius^2 which is a circle
+		float x = randf();
+		float finalRadius = radius + randf() * radiusDeviation;
+		float y = ((rand() % 2) * 2 - 1) * sqrt(1.0f - x * x);
+
+		// Holds transformations before multiplying them
+		glm::vec3 tempTranslation;
+		glm::quat tempRotation;
+		glm::vec3 tempScale;
+
+		// Makes the random distribution more even
+		if (randf() > 0.5f)
+		{
+			// Generates a translation near a circle of radius "radius"
+			tempTranslation = glm::vec3(y * finalRadius, randf(), x * finalRadius);
+		}
+		else
+		{
+			// Generates a translation near a circle of radius "radius"
+			tempTranslation = glm::vec3(x * finalRadius, randf(), y * finalRadius);
+		}
+		// Generates random rotations
+		tempRotation = glm::quat(1.0f, randf(), randf(), randf());
+		// Generates random scales
+		//tempScale = 0.1f * glm::vec3(randf(), randf(), randf());
+		tempScale = 0.1f * glm::vec3(5.0f, 5.0f, 5.0f);
+
+		// Initialize matrices
+		glm::mat4 trans = glm::mat4(1.0f);
+		glm::mat4 rot = glm::mat4(1.0f);
+		glm::mat4 sca = glm::mat4(1.0f);
+
+		// Transform the matrices to their correct form
+		trans = glm::translate(trans, tempTranslation);
+		rot = glm::mat4_cast(tempRotation);
+		sca = glm::scale(sca, tempScale);
+
+		// Push matrix transformation
+		instanceMatrix.push_back(trans * rot * sca);
+	}
+	// Create the asteroid model with instancing enabled
+	Model asteroid("./asteroid/scene.gltf", number, instanceMatrix);
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
@@ -330,23 +430,32 @@ int main()
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glm::vec3 objectPos1 = glm::vec3(5.0f, 0.0f, 5.0f);
-		glm::mat4 objectModel1 = glm::mat4(1.0f);
-		objectModel1 = glm::translate(objectModel1, objectPos1);
-
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, glm::value_ptr(objectModel1));
-
 		// Handles camera inputs
 		camera.Inputs(window);
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
 		// Draws different meshes
-		floor.Draw(shaderProgram, camera);
+		//floor.Draw(shaderProgram, camera);
 		//floor2.Draw(shaderProgram, camera);
-		light.Draw(lightShader, camera);
+		//light.Draw(lightShader, camera);
 		// Draw a model
-		//model.Draw(shaderProgram, camera);
+		model.Draw(shaderProgram, camera);
+		
+		glm::vec3 tempscale = glm::vec3(1.0f, 1.0f, 1.0f);
+
+		glm::vec3 temptrans = glm::vec3(5.0f, 5.0f, 5.0f);
+
+		glm::vec3 temprotation = glm::vec3(1.0f, 1.0f, 1.0f);
+
+			
+		temprotation = glm::rotate(temptrans, (float)glfwGetTime(), glm::vec3(2.0f, 1.0f, 1.0f));
+			
+	
+
+		model2.Draw(shaderProgram, camera, temptrans, temprotation, tempscale);
+		//asteroid.Draw(asteroidShader, camera);
+
 
 		// Since the cubemap will always have a depth of 1.0, we need that equal sign so it doesn't get discarded
 		glDepthFunc(GL_LEQUAL);
